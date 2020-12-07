@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/Image">
+        <file>logout.png</file>
+        <file>reload.png</file>
+        <file>Test.ico</file>
+    </qresource>
+</RCC>
