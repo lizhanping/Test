@@ -81,11 +81,6 @@ void Hook::unInstallHook()
         UnhookWindowsHookEx(keyHook);//键盘钩子句不为空时销毁掉
         keyHook=nullptr;
     }
-   if(keyHook!=nullptr)
-    {
-        UnhookWindowsHookEx(keyHook);//键盘钩子句不为空时销毁掉
-        keyHook=nullptr;
-    }
     qDebug()<<"uninstall hook";
 }
 

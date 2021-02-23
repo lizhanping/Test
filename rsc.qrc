@@ -4,5 +4,6 @@
         <file>reload.png</file>
         <file>exit-gray.png</file>
         <file>exit-light.png</file>
+        <file>Exam.ico</file>
     </qresource>
 </RCC>

@@ -4,6 +4,7 @@
 #include "hook.h"
 #include "simple_app.h"
 #include "global.h"
+#include "webservicehelper.h"
 
 #include <QApplication>
 #include<QFile>
@@ -44,24 +45,48 @@ bool isLocking=false;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    a.setWindowIcon(QIcon(":/Image/Test.ico"));
+    a.setWindowIcon(QIcon(":/Image/Exam.ico"));
     QFile file(QApplication::applicationDirPath()+"/Exam.ini");
 
     QSettings testSettings(file.fileName(),QSettings::IniFormat);
     testSettings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    lockscreen=testSettings.value("CONFIG/LOCK",QVariant("ON")).toString()=="ON";
-    envcheck=testSettings.value("CONFIG/ENVCHECK",QVariant("ON")).toString()=="ON";
-    url=testSettings.value("CONFIG/URL",QVariant("http://www.safeexamclient.com/login")).toString();
-    examname=testSettings.value("CONFIG/NAME",QVariant(QStringLiteral("在线考试平台"))).toString();
-    exitpwd=testSettings.value("CONFIG/PWD",QVariant("")).toString();
-    showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("ON")).toString()=="ON";
-    showlocalip=testSettings.value("CONFIG/SHOWLOCALIP",QVariant("ON")).toString()=="ON";
-    showtop=testSettings.value("CONFIG/SHOWTOP",QVariant("ON")).toString()=="ON";
-    showbottom=testSettings.value("CONFIG/SHOWBOTTOM",QVariant("ON")).toString()=="ON";
-    showlogo=testSettings.value("CONFIG/SHOWLOGO",QVariant("ON")).toString()=="ON";
-    showexitbtn=testSettings.value("CONFIG/SHOWEXITBTN",QVariant("ON")).toString()=="ON";
-    logoname=testSettings.value("CONFIG/LOGO",QVariant("")).toString();
-    showname=testSettings.value("CONFIG/SHOWNAME",QVariant("ON")).toString()=="ON";
+    QString key=testSettings.value("CONFIG/KEY",QVariant("")).toString();
+    if(key.isEmpty())
+    {
+        lockscreen=testSettings.value("CONFIG/LOCK",QVariant("ON")).toString()=="ON";
+        envcheck=testSettings.value("CONFIG/ENVCHECK",QVariant("ON")).toString()=="ON";
+        url=testSettings.value("CONFIG/URL",QVariant("http://www.safeexamclient.com/login")).toString();
+        examname=testSettings.value("CONFIG/NAME",QVariant(QStringLiteral("在线考试平台"))).toString();
+        exitpwd=testSettings.value("CONFIG/PWD",QVariant("")).toString();
+        showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("ON")).toString()=="ON";
+        showlocalip=testSettings.value("CONFIG/SHOWLOCALIP",QVariant("ON")).toString()=="ON";
+        showtop=testSettings.value("CONFIG/SHOWTOP",QVariant("ON")).toString()=="ON";
+        showbottom=testSettings.value("CONFIG/SHOWBOTTOM",QVariant("ON")).toString()=="ON";
+        showlogo=testSettings.value("CONFIG/SHOWLOGO",QVariant("ON")).toString()=="ON";
+        showexitbtn=testSettings.value("CONFIG/SHOWEXITBTN",QVariant("ON")).toString()=="ON";
+        logoname=testSettings.value("CONFIG/LOGO",QVariant("")).toString();
+        showname=testSettings.value("CONFIG/SHOWNAME",QVariant("ON")).toString()=="ON";
+    }
+    else
+    {
+        //发送http请求，获取json结果，解析，然后配置参数
+        QNetworkAccessManager* _manager=new QNetworkAccessManager();
+        QString SERVER_URL=QString("http://www.safeexamclient.com/login/exam/")+key;
+        QNetworkReply *reply = _manager->get(QNetworkRequest(QUrl(SERVER_URL)));
+        QByteArray responseData;
+        QEventLoop eventLoop;
+        QObject::connect(_manager, SIGNAL(finished(QNetworkReply*)), &eventLoop, SLOT(quit()));
+        eventLoop.exec();       //block until finish
+        responseData = reply->readAll();
+        qDebug()<<responseData;
+        if(responseData.isNull()||responseData.isEmpty())
+            url="http://www.safeexamclient.com/login";
+        else
+        {
+            //解析
+        }
+    }
+
 
 
     //cef 相关初始化
