@@ -2,6 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
+#include "mainwindow.h"
 #include "simple_handler.h"
 #include "include/base/cef_bind.h"
 #include "include/cef_app.h"
@@ -63,6 +64,18 @@ void SimpleHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   // Add to the list of existing browsers.
   browser_list_.push_back(browser);
   qDebug()<<"create success";
+#ifdef Q_OS_WIN
+  HWND wnd=browser->GetHost()->GetWindowHandle();
+  auto hwnd=::GetAncestor(wnd,GA_PARENT);
+  auto window=QWidget::find((WId)hwnd);
+  if(window)
+  {
+      QRect qrect=window->rect();
+      if(wnd)
+           MoveWindow(wnd,qrect.x(),qrect.y(),qrect.width(),qrect.height(),true);
+  }
+#endif
+
 }
 
 bool SimpleHandler::DoClose(CefRefPtr<CefBrowser> browser) {

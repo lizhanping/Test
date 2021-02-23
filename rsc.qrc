@@ -2,6 +2,7 @@
     <qresource prefix="/Image">
         <file>logout.png</file>
         <file>reload.png</file>
-        <file>Test.ico</file>
+        <file>exit-gray.png</file>
+        <file>exit-light.png</file>
     </qresource>
 </RCC>

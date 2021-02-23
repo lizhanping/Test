@@ -2,6 +2,7 @@
 #include "customlabel.h"
 #include "utils.h"
 #include "exitwindow.h"
+#include "global.h"
 
 #include<QVBoxLayout>
 #include<QHBoxLayout>
@@ -14,21 +15,15 @@
 #include<QDateTime>
 
 
-MainWindow::MainWindow(QString url,QString name,QPixmap icon,QString ip,QString exitpwd,bool showtime,bool lockscreen,QWidget *parent)
+MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent),
       mainView(new QWidget()),
       topWidget(new QWidget()),
       statusBar(new QWidget()),
-      m_url(url),
-      m_name(name),
-      m_icon(icon),
-      m_ip(ip),
-      m_exitpwd(exitpwd),
-      m_showtime(showtime),
-      m_lockscreen(lockscreen),
       handler(nullptr)
 {
     this->InitComponent();
+    this->showFullScreen();
 }
 
 MainWindow::~MainWindow()
@@ -47,20 +42,31 @@ void MainWindow::InitComponent()
     //1.top
     topWidget->setFixedHeight(48);
     topWidget->setStyleSheet(".QWidget{background:white;border-bottom:1px solid lightgray}");
+    topWidget->setVisible(showtop);
     QHBoxLayout* toplayout=new QHBoxLayout(topWidget);
     //1.1 icon
     QLabel* icon=new QLabel();
     icon->setScaledContents(true);
     icon->setFixedSize(32,32);
-    icon->setPixmap(m_icon);
-    if(m_icon.isNull())
-        icon->setVisible(false);
+    QPixmap logoicon;
+    if(!logoname.isEmpty())
+    {
+        //判断当前目录是否存在logo.png文件
+        QFile logo(QApplication::applicationDirPath()+"/"+logoname);
+        if(logo.exists())
+        {
+            logoicon.load(logo.fileName());
+        }
+    }
+    icon->setPixmap(logoicon);
+    icon->setVisible(showlogo&&!logoicon.isNull());
 
     //1.2 name
     QLabel* name=new QLabel();
-    name->setText(m_name);
+    name->setText(examname);
     name->setScaledContents(true);
     name->setFont(QFont("Microsoft YaHei",18));
+    name->setVisible(showname);
 
     //1.3 time
     QLabel* time=new QLabel();
@@ -69,20 +75,30 @@ void MainWindow::InitComponent()
     time->setFont(QFont("Microsoft YaHei",12));
     time->setStyleSheet(".QLabel{border:1px solid lightgray}");
     time->setContentsMargins(3,3,3,3);
+    time->setVisible(showtime);
+
+    //1.4 exitbtn
+    QPushButton* exitBtn=new QPushButton();
+    exitBtn->setFixedSize(26,26);
+    exitBtn->setVisible(showexitbtn);
+    exitBtn->setStyleSheet("QPushButton{border-image:url(:/Image/exit-gray.png)}"
+                           "QPushButton:hover{border-image:url(:/Image/exit-light.png)}");
 
     // add all items to layout
     toplayout->addWidget(icon,0,Qt::AlignVCenter);
     toplayout->addWidget(name,0,Qt::AlignVCenter);
     toplayout->addStretch();
     toplayout->addWidget(time,0,Qt::AlignVCenter);
-    toplayout->setMargin(3);
+    toplayout->addWidget(exitBtn,0,Qt::AlignVCenter);
+    toplayout->setMargin(5);
 
 
     //2.mainview
     CefWindowInfo window_info;
     HWND wnd=reinterpret_cast<HWND>(this->mainView->winId());
     RECT winRect;
-    QRect mainRect=this->mainView->rect();
+    //QRect mainRect=this->mainView->rect();
+    QRect mainRect={0,0,0,0};
     winRect.left=mainRect.left();
     winRect.right=mainRect.width();
     winRect.top=mainRect.top();
@@ -90,7 +106,7 @@ void MainWindow::InitComponent()
     window_info.SetAsChild(wnd,winRect);
     CefBrowserSettings settings;
     handler = CefRefPtr<SimpleHandler>(new SimpleHandler());
-    bool flag=CefBrowserHost::CreateBrowser(window_info, handler, m_url.toStdString(), settings, nullptr,nullptr);
+    bool flag=CefBrowserHost::CreateBrowser(window_info, handler, url.toStdString(), settings, nullptr,nullptr);
     if(flag)
     {
         qDebug()<<"create browser success!";
@@ -105,6 +121,7 @@ void MainWindow::InitComponent()
     //3.status bar
     statusBar->setFixedHeight(40);
     statusBar->setStyleSheet(".QWidget{background:white;border-top:1px solid lightgray}");
+    statusBar->setVisible(showbottom);
     QHBoxLayout* bottomLayout=new QHBoxLayout(statusBar);
     QPalette pa;
     pa.setColor(QPalette::WindowText,Qt::gray);
@@ -140,10 +157,11 @@ void MainWindow::InitComponent()
 
     //3.3 ip
     QLabel* ipLabel=new QLabel();
-    ipLabel->setText("IP:"+m_ip);
+    ipLabel->setText("IP:"+Utils::getIp());
     ipLabel->setFont(QFont("Microsoft YaHei",12));
     ipLabel->setScaledContents(true);
     ipLabel->setPalette(pa);
+    ipLabel->setVisible(showlocalip);
 
     //add to layout
     bottomLayout->addSpacing(5);
@@ -182,8 +200,19 @@ void MainWindow::InitComponent()
         //this->mainView->reload();
         handler->getCurrentBrowser()->Reload();
     });
+    connect(exitBtn,&QPushButton::clicked,[this]()
+    {
+        auto rst=QMessageBox::question(this,QStringLiteral("退出"),QStringLiteral("确定要退出考试系统吗？"),QStringLiteral("是"),QStringLiteral("否"),0);
+        if(rst==0)
+        {
+            qDebug()<<"user exit system by click exitbtn";
+            QApplication::exit(0);
+            return;
+        }
 
-    if(m_showtime)
+    });
+
+    if(showtime)
     {
         //定义一个定时器，定时更新时间
         QTimer* timer=new QTimer();
@@ -195,23 +224,17 @@ void MainWindow::InitComponent()
         });
         timer->start();
     }
-    else
-    {
-        time->setVisible(false);
-    }
-
-    statusBar->setVisible(m_lockscreen);
 }
 
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     //判断密码情况
-    if(m_exitpwd=="")
+    if(exitpwd=="")
         event->accept();
     else
     {
-        ExitWindow* exitWindow=new ExitWindow(m_exitpwd,this);
+        ExitWindow* exitWindow=new ExitWindow(exitpwd,this);
         int rst=exitWindow->exec();
         if(rst==1)
             event->accept();
@@ -234,8 +257,10 @@ void MainWindow::resizeEvent(QResizeEvent *event)
         return;
             qDebug()<<"resize";
     CefRefPtr<CefBrowser> browser=handler->getCurrentBrowser();
+#ifdef Q_OS_WIN
     QRect rect=this->mainView->rect();
     HWND hwnd=browser->GetHost()->GetWindowHandle();
     ::MoveWindow(hwnd,rect.x(),rect.y(),rect.width(),rect.height(),true);
+#endif
     event->accept();
 }
