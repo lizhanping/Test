@@ -9,8 +9,8 @@ class Hook
 
 public:
     Hook();
-    void installHook();
-    void unInstallHook();
+    static void installHook();
+    static void unInstallHook();
 };
 
 #endif

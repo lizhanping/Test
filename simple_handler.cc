@@ -2,6 +2,8 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
+#include "utils.h"
+#include "global.h"
 #include "mainwindow.h"
 #include "simple_handler.h"
 #include "include/base/cef_bind.h"
@@ -21,6 +23,7 @@
 #include<QWindow>
 #include<QWidget>
 #include<QStackedLayout>
+#include<QThread>
 
 namespace {
 
@@ -38,7 +41,9 @@ std::string GetDataURI(const std::string& data, const std::string& mime_type) {
 
 
 
-SimpleHandler::SimpleHandler():is_closing_(false)
+SimpleHandler::SimpleHandler(Delegate* handler):
+    is_closing_(false),
+    delegate_(handler)
 {
     DCHECK(!g_instance);
     g_instance=this;
@@ -77,6 +82,48 @@ void SimpleHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 #endif
 
 }
+
+void SimpleHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
+                                    CefRefPtr<CefFrame> frame,
+                                    const CefString &url)
+{
+    QString url_str=QString::fromStdString(url.ToString());
+    if(lockscreen)
+    {
+        qDebug()<<url_str;
+        if(!lock_start_key.isNull()&&!lock_start_key.isEmpty()&&url_str.contains(lock_start_key))
+        {
+            if(!islocking)
+            {
+                Utils::startLock();
+                islocking=true;
+            }
+        }
+        else if(!lock_end_key.isNull()&&!lock_end_key.isEmpty()&&url_str.contains(lock_end_key))
+        {
+           if(islocking)
+           {
+               Utils::closeLock();
+               islocking=false;
+           }
+        }
+    }
+}
+
+void SimpleHandler::NotifyUrlChanged(const QString &url)
+{
+    if(!CefCurrentlyOn(TID_UI))
+    {
+        qDebug()<<"not on UI";
+         qDebug()<<"id4:"<<QThread::currentThreadId();
+        CefPostTask(TID_UI,CefCreateClosureTask(base::Bind(&SimpleHandler::NotifyUrlChanged,this,url)));
+        return;
+    }
+    qDebug()<<"id3:"<<QThread::currentThreadId();
+    if(delegate_)
+        delegate_->UrlChanged(url);
+}
+
 
 bool SimpleHandler::DoClose(CefRefPtr<CefBrowser> browser) {
   CEF_REQUIRE_UI_THREAD();
@@ -134,6 +181,19 @@ void SimpleHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
   frame->LoadURL(GetDataURI(ss.str(), "text/html"));
 }
 
+
+void SimpleHandler::OnLoadStart(CefRefPtr<CefBrowser> browser,
+                                CefRefPtr<CefFrame> frame,
+                                TransitionType transition_type)
+{
+    QString url_str=QString::fromStdString(frame->GetURL().ToString());
+    if(url_str.contains("http://www.safeexamclient.com/login/exam/"))
+    {
+        frame->LoadURL(url.toStdString());
+        //重现加载配置
+        delegate_->UpdateForm();
+    }
+}
 
 
 void SimpleHandler::CloseAllBrowsers(bool force_close) {

@@ -4,7 +4,6 @@
 #include "hook.h"
 #include "simple_app.h"
 #include "global.h"
-#include "webservicehelper.h"
 
 #include <QApplication>
 #include<QFile>
@@ -14,6 +13,11 @@
 #include<QTextCodec>
 #include<QDesktopWidget>
 #include<QTimer>
+#include<QNetworkAccessManager>
+#include<QUrl>
+#include<QNetworkReply>
+#include<QJsonObject>
+#include<QJsonDocument>
 
 /*
     version 1.1
@@ -40,51 +44,106 @@
     3.可扩展？
 */
 
-bool isLocking=false;
-
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/Image/Exam.ico"));
     QFile file(QApplication::applicationDirPath()+"/Exam.ini");
-
-    QSettings testSettings(file.fileName(),QSettings::IniFormat);
-    testSettings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString key=testSettings.value("CONFIG/KEY",QVariant("")).toString();
-    if(key.isEmpty())
+    //配置文件存在
+    if(file.exists())
     {
-        lockscreen=testSettings.value("CONFIG/LOCK",QVariant("ON")).toString()=="ON";
-        envcheck=testSettings.value("CONFIG/ENVCHECK",QVariant("ON")).toString()=="ON";
-        url=testSettings.value("CONFIG/URL",QVariant("http://www.safeexamclient.com/login")).toString();
-        examname=testSettings.value("CONFIG/NAME",QVariant(QStringLiteral("在线考试平台"))).toString();
-        exitpwd=testSettings.value("CONFIG/PWD",QVariant("")).toString();
-        showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("ON")).toString()=="ON";
-        showlocalip=testSettings.value("CONFIG/SHOWLOCALIP",QVariant("ON")).toString()=="ON";
-        showtop=testSettings.value("CONFIG/SHOWTOP",QVariant("ON")).toString()=="ON";
-        showbottom=testSettings.value("CONFIG/SHOWBOTTOM",QVariant("ON")).toString()=="ON";
-        showlogo=testSettings.value("CONFIG/SHOWLOGO",QVariant("ON")).toString()=="ON";
-        showexitbtn=testSettings.value("CONFIG/SHOWEXITBTN",QVariant("ON")).toString()=="ON";
-        logoname=testSettings.value("CONFIG/LOGO",QVariant("")).toString();
-        showname=testSettings.value("CONFIG/SHOWNAME",QVariant("ON")).toString()=="ON";
+        QSettings testSettings(file.fileName(),QSettings::IniFormat);
+        testSettings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+        QString key=testSettings.value("CONFIG/KEY",QVariant("")).toString();
+        //判断是否存在KEY。
+        //1.如果存在，则通过接口来获取参数信息，并记录到全局
+        //2.如果不存在，则读取本地配置信息，如果未能读取到，则使用默认参数配置
+        //未读取到key
+        if(key.isEmpty())
+        {
+            lockscreen=testSettings.value("CONFIG/LOCK",QVariant("ON")).toString()=="ON";
+            envcheck=testSettings.value("CONFIG/ENVCHECK",QVariant("ON")).toString()=="ON";
+            url=testSettings.value("CONFIG/URL",QVariant("http://www.safeexamclient.com/login")).toString();
+            examname=testSettings.value("CONFIG/NAME",QVariant(QStringLiteral("在线考试平台"))).toString();
+            exitpwd=testSettings.value("CONFIG/PWD",QVariant("")).toString();
+            showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("ON")).toString()=="ON";
+            showlocalip=testSettings.value("CONFIG/SHOWLOCALIP",QVariant("ON")).toString()=="ON";
+            showtop=testSettings.value("CONFIG/SHOWTOP",QVariant("ON")).toString()=="ON";
+            showbottom=testSettings.value("CONFIG/SHOWBOTTOM",QVariant("ON")).toString()=="ON";
+            showlogo=testSettings.value("CONFIG/SHOWLOGO",QVariant("ON")).toString()=="ON";
+            showexitbtn=testSettings.value("CONFIG/SHOWEXITBTN",QVariant("ON")).toString()=="ON";
+            logoname=testSettings.value("CONFIG/LOGO",QVariant("")).toString();
+            showname=testSettings.value("CONFIG/SHOWNAME",QVariant("ON")).toString()=="ON";
+        }
+        else
+        {
+            //读取到key
+            //发送http请求，获取json结果，解析，然后配置参数
+            QNetworkAccessManager* _manager=new QNetworkAccessManager();
+            QString SERVER_URL=QString("http://www.safeexamclient.com/login/exam/")+key;
+            QNetworkReply *reply = _manager->get(QNetworkRequest(QUrl(SERVER_URL)));
+            QByteArray responseData;
+            QEventLoop eventLoop;
+            QObject::connect(_manager, SIGNAL(finished(QNetworkReply*)), &eventLoop, SLOT(quit()));
+            eventLoop.exec();       //block until finish
+            responseData = reply->readAll();
+            qDebug()<<responseData;
+            //response 不为空
+            if(!(responseData.isNull()||responseData.isEmpty()))
+            {
+                //解析json
+                QJsonDocument doc=QJsonDocument::fromJson(responseData);
+                if(doc.isObject())
+                {
+                    auto val=doc.object();
+                    int code=val["code"].toInt();
+                    if(code==1)
+                    {
+                        auto obj=val["data"].toObject();
+                        url=obj["exam_url"].toString();
+                        lockscreen=obj["exam_lock"].toString()=="1";
+                        examname=obj["exam_name"].toString();
+                        showtop=obj["exam_ui_top"].toString()=="1";
+                        showbottom=obj["exam_ui_bottom"].toString()=="1";
+                        lock_start_key=obj["exam_lock_on_key"].toString();
+                        lock_end_key=obj["exam_lock_off_key"].toString();
+                        qDebug()<<url;
+                    }
+                    else
+                    {
+                        //code !=1,代表参数读取有问题,弹框并退出
+                        qDebug()<<"code:"<<code<<"message:"<<val["message"];
+                        QMessageBox::information(nullptr,QStringLiteral("错误"),val["message"].toString());
+                        return 0;
+                    }
+                }
+                else
+                {
+                    //json解析错误
+                    QMessageBox::information(nullptr,QStringLiteral("错误"),QStringLiteral("接口返回数据错误"));
+                    return 0;
+                }
+
+            }
+            else
+            {
+                //response为空，先提示，然后使用默认
+                auto rst=QMessageBox::question(nullptr,QStringLiteral("提示"),QStringLiteral("通过指定的Key获取项目参数失败，\n将使用默认配置，是否继续？"),QStringLiteral("是"),QStringLiteral("否"),0);
+                if(rst==1)
+                {
+                    qDebug()<<"project para read error,user exit client";
+                    return 0;
+                }
+                else
+                {
+                    //选择了继续，则按照默认配置继续
+                }
+            }
+        }
     }
     else
     {
-        //发送http请求，获取json结果，解析，然后配置参数
-        QNetworkAccessManager* _manager=new QNetworkAccessManager();
-        QString SERVER_URL=QString("http://www.safeexamclient.com/login/exam/")+key;
-        QNetworkReply *reply = _manager->get(QNetworkRequest(QUrl(SERVER_URL)));
-        QByteArray responseData;
-        QEventLoop eventLoop;
-        QObject::connect(_manager, SIGNAL(finished(QNetworkReply*)), &eventLoop, SLOT(quit()));
-        eventLoop.exec();       //block until finish
-        responseData = reply->readAll();
-        qDebug()<<responseData;
-        if(responseData.isNull()||responseData.isEmpty())
-            url="http://www.safeexamclient.com/login";
-        else
-        {
-            //解析
-        }
+        //配置文件不存在，则全部使用默认值
     }
 
 
@@ -106,40 +165,7 @@ int main(int argc, char *argv[])
     CefInitialize(mainArgs, settings, app.get(), nullptr);
 
     MainWindow w;
-//    Hook hook;
-//    if(lockscreen)
-//    {
-//        w.setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
-//        if(staysOnTop)
-//            w.setWindowFlags(w.windowFlags()|Qt::WindowStaysOnTopHint);
-//        Utils::startLock();
-//        hook.installHook();
-//        qDebug()<<"start lock";
-//        isLocking=true;
-//        w.activateWindow();
-//        w.raise();
-//        w.setGeometry(0,0,QApplication::desktop()->width(),QApplication::desktop()->height());
-//        w.show();
-//        //w.showFullScreen();
-//        //定义一个定时器，确保resize触发
-//        QTimer* timer=new QTimer();
-//        timer->singleShot(2000,[&w](){
-//           w.resize(w.size()-QSize(1,1));
-//           w.resize(w.size()+QSize(1,1));
-//        });
-
-//    }
-//    else
-//        w.showMaximized();
-
    int rst=a.exec();
    CefShutdown();
-   if(isLocking)
-   {
-       Utils::closeLock();
-//       hook.unInstallHook();
-       qDebug()<<"close lock";
-       isLocking=false;
-   }
    return rst;
 }

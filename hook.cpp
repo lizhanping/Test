@@ -10,11 +10,11 @@ Hook::Hook()
 static HHOOK keyHook=nullptr;
 LRESULT CALLBACK keyProc(int nCode,WPARAM wParam,LPARAM lParam)
 {
-    qDebug()<<"code:"<<nCode;
     KBDLLHOOKSTRUCT *pkbhs=(KBDLLHOOKSTRUCT*)lParam;
-    qDebug()<<"flag:"<<pkbhs->flags;
-    qDebug()<<"vkCode:"<<pkbhs->vkCode;
-    qDebug()<<"scanCode:"<<pkbhs->scanCode;
+//    qDebug()<<"code:"<<nCode;
+//    qDebug()<<"flag:"<<pkbhs->flags;
+//    qDebug()<<"vkCode:"<<pkbhs->vkCode;
+//    qDebug()<<"scanCode:"<<pkbhs->scanCode;
     //if(nCode == HC_ACTION)
     if(nCode>=0)
     {

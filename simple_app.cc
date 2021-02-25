@@ -24,5 +24,10 @@ void SimpleApp::OnContextInitialized() {
 void SimpleApp::OnBeforeCommandLineProcessing(const CefString &process_type,
                                               CefRefPtr<CefCommandLine> command_line)
 {
-
+    command_line->AppendSwitchWithValue("enable-media-stream", "1");  //开启摄像头
+    command_line->AppendSwitchWithValue("enable-system-flash", "1");  //flash
+    command_line->AppendSwitchWithValue("enable-speech-input", "1");  //语音输入
+    command_line->AppendSwitchWithValue("enable-experimental-web-platform-features","1");
+    command_line->AppendSwitch("use-fake-ui-for-media-stream");
+    command_line->AppendSwitch("disable-web-security");
 }

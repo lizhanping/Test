@@ -8,6 +8,7 @@
 #include<QTimer>
 #include<QHostAddress>
 #include<QNetworkInterface>
+#include<QThread>
 
 
 Utils::Utils()
@@ -15,6 +16,8 @@ Utils::Utils()
 
 }
 
+static QThread* thread=nullptr;
+static QTimer* timer=nullptr;
 
 QString Utils::getIp()
 {
@@ -39,22 +42,25 @@ QString Utils::getIp()
 void Utils::startLock()
 {
 #ifdef Q_OS_WIN
+    Hook::installHook();
     auto handler=FindWindow(L"Shell_TrayWnd",NULL);
     ShowWindow(handler,SW_HIDE);
     KillProcessByName("explorer.exe");
-    QTimer* timer=new QTimer();
-    timer->setInterval(300);
-    QObject::connect(timer,&QTimer::timeout,[](){
-        KillProcessByName("taskmgr.exe");
-        KillProcessByName("Taskmgr.exe");
-    });
-    timer->start();
+//    timer=new QTimer();
+//    timer->setInterval(300);
+//    QObject::connect(timer,&QTimer::timeout,[](){
+//        KillProcessByName("taskmgr.exe");
+//        KillProcessByName("Taskmgr.exe");
+//        qDebug()<<"here....";
+//    });
+//    timer->start();
 #endif
 }
 
 void Utils::closeLock()
 {
 #ifdef Q_OS_WIN
+    Hook::unInstallHook();
     auto handler=FindWindow(L"Shell_TrayWnd",NULL);
     ShowWindow(handler,SW_SHOW);
 
@@ -118,4 +124,26 @@ void Utils::OpenProcessByName(QString path)
 }
 
 
+//deserialize
+QJsonObject Utils::DeserializeToObejct(QString jsondata)
+{
+    QString str=jsondata;
+    str.replace("\n","");
+    QByteArray array;
+    array.append(str);
+    QJsonDocument doc=QJsonDocument::fromJson(array);
+    if(doc.isNull())
+    {
+        qDebug()<<"error string!";
+    }
+    return doc.object();
+}
+
+//serialize
+QString Utils::SerilizeObject(QJsonObject object)
+{
+    QString str;
+    str=QString::fromLatin1(QJsonDocument(object).toJson());
+    return str;
+}
 

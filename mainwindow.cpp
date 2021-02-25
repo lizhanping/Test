@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "exitwindow.h"
 #include "global.h"
+#include "callbackhandler.h"
 
 #include<QVBoxLayout>
 #include<QHBoxLayout>
@@ -13,6 +14,7 @@
 #include<QMessageBox>
 #include<QApplication>
 #include<QDateTime>
+#include<QThread>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -20,9 +22,12 @@ MainWindow::MainWindow(QWidget *parent)
       mainView(new QWidget()),
       topWidget(new QWidget()),
       statusBar(new QWidget()),
-      handler(nullptr)
+      handler(nullptr),
+      timer(new QTimer)
 {
+    qDebug()<<"id1:"<<QThread::currentThreadId();
     this->InitComponent();
+    this->InitTimer();
     this->showFullScreen();
 }
 
@@ -45,7 +50,7 @@ void MainWindow::InitComponent()
     topWidget->setVisible(showtop);
     QHBoxLayout* toplayout=new QHBoxLayout(topWidget);
     //1.1 icon
-    QLabel* icon=new QLabel();
+    icon=new QLabel();
     icon->setScaledContents(true);
     icon->setFixedSize(32,32);
     QPixmap logoicon;
@@ -62,14 +67,14 @@ void MainWindow::InitComponent()
     icon->setVisible(showlogo&&!logoicon.isNull());
 
     //1.2 name
-    QLabel* name=new QLabel();
+    name=new QLabel();
     name->setText(examname);
     name->setScaledContents(true);
     name->setFont(QFont("Microsoft YaHei",18));
     name->setVisible(showname);
 
     //1.3 time
-    QLabel* time=new QLabel();
+    time=new QLabel();
     time->setFixedHeight(36);
     time->setScaledContents(true);
     time->setFont(QFont("Microsoft YaHei",12));
@@ -78,7 +83,7 @@ void MainWindow::InitComponent()
     time->setVisible(showtime);
 
     //1.4 exitbtn
-    QPushButton* exitBtn=new QPushButton();
+    exitBtn=new QPushButton();
     exitBtn->setFixedSize(26,26);
     exitBtn->setVisible(showexitbtn);
     exitBtn->setStyleSheet("QPushButton{border-image:url(:/Image/exit-gray.png)}"
@@ -96,16 +101,10 @@ void MainWindow::InitComponent()
     //2.mainview
     CefWindowInfo window_info;
     HWND wnd=reinterpret_cast<HWND>(this->mainView->winId());
-    RECT winRect;
-    //QRect mainRect=this->mainView->rect();
-    QRect mainRect={0,0,0,0};
-    winRect.left=mainRect.left();
-    winRect.right=mainRect.width();
-    winRect.top=mainRect.top();
-    winRect.bottom=mainRect.height();
+    RECT winRect={0,0,0,0};
     window_info.SetAsChild(wnd,winRect);
     CefBrowserSettings settings;
-    handler = CefRefPtr<SimpleHandler>(new SimpleHandler());
+    handler = CefRefPtr<SimpleHandler>(new SimpleHandler(dynamic_cast<SimpleHandler::Delegate*>(new CallBackHandler(this))));
     bool flag=CefBrowserHost::CreateBrowser(window_info, handler, url.toStdString(), settings, nullptr,nullptr);
     if(flag)
     {
@@ -119,26 +118,32 @@ void MainWindow::InitComponent()
     }
 
     //3.status bar
-    statusBar->setFixedHeight(40);
+    //statusBar->setFixedHeight(40);
+    statusBar->setMaximumHeight(40);
     statusBar->setStyleSheet(".QWidget{background:white;border-top:1px solid lightgray}");
     statusBar->setVisible(showbottom);
+//    QSizePolicy sp_retain = statusBar->sizePolicy();
+//    sp_retain.setRetainSizeWhenHidden(false);
+//    statusBar->setSizePolicy(sp_retain);
+
     QHBoxLayout* bottomLayout=new QHBoxLayout(statusBar);
     QPalette pa;
     pa.setColor(QPalette::WindowText,Qt::gray);
 
     //3.1 tips
-    CustomLabel* tipsLabel=new CustomLabel();
+    tipsLabel=new CustomLabel();
     tipsLabel->setText(QStringLiteral("提示：考试过程将全程锁屏！"));
     tipsLabel->setFont(QFont("Microsoft YaHei",12));
     tipsLabel->setScaledContents(true);
     tipsLabel->setPalette(pa);
+    tipsLabel->setVisible(false);
 
     //3.2 buttons
 
     QString btnStyle=".QPushButton{background:transparent;border:1px solid lightblue;border-radius:13px}"
                      ".QPushButton::hover{background:rgba(64,171,225,1);border:1px solid blue}";
     //3.2.1 close
-    QPushButton* closeBtn=new QPushButton();
+    closeBtn=new QPushButton();
     closeBtn->setFixedSize(80,26);
     QPixmap p1(":/Image/logout.png");
     closeBtn->setIcon(QIcon(p1));
@@ -147,7 +152,7 @@ void MainWindow::InitComponent()
     closeBtn->setStyleSheet(btnStyle);
 
     //3.2.2 reload
-    QPushButton* reloadBtn=new QPushButton();
+    reloadBtn=new QPushButton();
     reloadBtn->setFixedSize(80,26);
     QPixmap p2(":/Image/reload.png");
     reloadBtn->setIcon(QIcon(p2));
@@ -156,7 +161,7 @@ void MainWindow::InitComponent()
     reloadBtn->setStyleSheet(btnStyle);
 
     //3.3 ip
-    QLabel* ipLabel=new QLabel();
+    ipLabel=new QLabel();
     ipLabel->setText("IP:"+Utils::getIp());
     ipLabel->setFont(QFont("Microsoft YaHei",12));
     ipLabel->setScaledContents(true);
@@ -180,13 +185,15 @@ void MainWindow::InitComponent()
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
 
+    mainLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
+
 
     //事件绑定
-    connect(tipsLabel,&CustomLabel::mouseDoubleClicked,[closeBtn,reloadBtn](){
+    connect(tipsLabel,&CustomLabel::mouseDoubleClicked,[this](){
         closeBtn->setVisible(true);
         reloadBtn->setVisible(true);
         QTimer* timer=new QTimer();
-        timer->singleShot(3000,[closeBtn,reloadBtn](){
+        timer->singleShot(5000,[this](){
             closeBtn->setVisible(false);
             reloadBtn->setVisible(false);
         });
@@ -206,6 +213,8 @@ void MainWindow::InitComponent()
         if(rst==0)
         {
             qDebug()<<"user exit system by click exitbtn";
+            if(islocking)
+                Utils::closeLock();
             QApplication::exit(0);
             return;
         }
@@ -217,7 +226,7 @@ void MainWindow::InitComponent()
         //定义一个定时器，定时更新时间
         QTimer* timer=new QTimer();
         timer->setInterval(1000);
-        connect(timer,&QTimer::timeout,[time](){
+        connect(timer,&QTimer::timeout,[this](){
             QDateTime current_date_time =QDateTime::currentDateTime();
             QString current_date =current_date_time.toString("yyyy-MM-dd hh:mm:ss");
             time->setText(current_date);
@@ -226,6 +235,25 @@ void MainWindow::InitComponent()
     }
 }
 
+
+void MainWindow::InitTimer()
+{
+    timer->setInterval(500);
+    connect(timer,&QTimer::timeout,[this](){
+       //1.检查是否锁屏
+        if(islocking)
+        {
+            Utils::KillProcessByName("taskmgr.exe");
+            Utils::KillProcessByName("Taskmgr.exe");
+        }
+        //2.是否环境检测 todo
+        if(envcheck)
+        {
+
+        }
+    });
+    timer->start(100);
+}
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
