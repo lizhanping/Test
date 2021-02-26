@@ -24,6 +24,7 @@ SOURCES += \
     simple_handler.cc \
     utils.cpp \
     global.cpp \
+    writelog.cpp \
 
 HEADERS += \
     callbackhandler.h \
@@ -35,6 +36,7 @@ HEADERS += \
     simple_handler.h \
     utils.h \
     global.h \
+    writelog.h \
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

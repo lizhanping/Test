@@ -91,7 +91,6 @@ void SimpleHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
     QString url_str=QString::fromStdString(url.ToString());
     if(lockscreen)
     {
-        qDebug()<<url_str;
         if(!lock_start_key.isNull()&&!lock_start_key.isEmpty()&&url_str.contains(lock_start_key))
         {
             if(!islocking)
@@ -108,6 +107,22 @@ void SimpleHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
                islocking=false;
            }
         }
+        else
+        {
+            if(url_str.contains(exam_finish_key)&&islocking)
+            {
+                showtop=true;
+                delegate_->UpdateForm();
+            }
+        }
+    }
+    else
+    {
+        if(url_str.contains(exam_finish_key))
+        {
+            showtop=true;
+            delegate_->UpdateForm();
+        }
     }
 }
 
@@ -116,7 +131,7 @@ void SimpleHandler::NotifyUrlChanged(const QString &url)
     if(!CefCurrentlyOn(TID_UI))
     {
         qDebug()<<"not on UI";
-         qDebug()<<"id4:"<<QThread::currentThreadId();
+        qDebug()<<"id4:"<<QThread::currentThreadId();
         CefPostTask(TID_UI,CefCreateClosureTask(base::Bind(&SimpleHandler::NotifyUrlChanged,this,url)));
         return;
     }
@@ -218,12 +233,6 @@ void SimpleHandler::OnLoadStart(CefRefPtr<CefBrowser> browser,
         //此时的url变量已经通过参数解析获得，可以直接加载
         frame->LoadURL(url.toStdString());
         //重现加载配置
-        delegate_->UpdateForm();
-    }
-
-    if(url_str.contains(exam_finish_key)&&islocking)
-    {
-        showtop=true;
         delegate_->UpdateForm();
     }
 }

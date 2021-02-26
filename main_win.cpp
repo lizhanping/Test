@@ -4,6 +4,9 @@
 #include "hook.h"
 #include "simple_app.h"
 #include "global.h"
+#include "qlogging.h"
+#include "writelog.h"
+
 
 #include <QApplication>
 #include<QFile>
@@ -48,6 +51,10 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/Image/Exam.ico"));
+
+    //安装日志
+    qInstallMessageHandler(outputMessage);
+
     QFile file(QApplication::applicationDirPath()+"/Exam.ini");
     //配置文件存在
     if(file.exists())
@@ -87,7 +94,7 @@ int main(int argc, char *argv[])
             QObject::connect(_manager, SIGNAL(finished(QNetworkReply*)), &eventLoop, SLOT(quit()));
             eventLoop.exec();       //block until finish
             responseData = reply->readAll();
-            qDebug()<<responseData;
+            //qDebug()<<responseData;
             //response 不为空
             if(!(responseData.isNull()||responseData.isEmpty()))
             {
@@ -117,7 +124,6 @@ int main(int argc, char *argv[])
                         {
                             exam_finish_key=lock_end_key;
                         }
-                        qDebug()<<url;
                     }
                     else
                     {

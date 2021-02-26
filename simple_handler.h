@@ -164,7 +164,7 @@ class SimpleHandler : public CefClient,
       CefRefPtr<CefRequest> request,
       CefRefPtr<CefResponse> response) override
   {
-      qDebug()<<"get resource:"<<QString::fromStdString(request->GetURL().ToString());
+      //qDebug()<<"get resource:"<<QString::fromStdString(request->GetURL().ToString());
       //返回特殊构造的resopnsefilter
       return new CustomResponseFilter(browser);
       //return nullptr;
@@ -180,7 +180,7 @@ class SimpleHandler : public CefClient,
       const CefString& request_initiator,
       bool& disable_default_handling) {
 
-      qDebug()<<QString::fromStdString(request->GetURL().ToString());
+     // qDebug()<<QString::fromStdString(request->GetURL().ToString());
       if(QString::fromStdString(request->GetURL().ToString()).contains("http://www.safeexamclient.com/login/exam"))
       {
           return this;
