@@ -3,6 +3,7 @@
 #include "utils.h"
 #include<QThread>
 #include<QWidget>
+#include<QLayout>
 
 CallBackHandler::CallBackHandler(MainWindow* window):mainwindow_(window)
 {
@@ -13,6 +14,9 @@ void CallBackHandler::UpdateForm()
 {
     mainwindow_->topWidget->setVisible(showtop);
     mainwindow_->statusBar->setVisible(showbottom);
+    mainwindow_->resize(mainwindow_->size().width()-1,mainwindow_->size().height()-1);
+    mainwindow_->resize(mainwindow_->size().width()+1,mainwindow_->size().height()+1);
+    mainwindow_->showFullScreen();
 }
 
 void CallBackHandler::UrlChanged(const QString& url)

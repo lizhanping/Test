@@ -29,6 +29,14 @@ MainWindow::MainWindow(QWidget *parent)
     this->InitComponent();
     this->InitTimer();
     this->showFullScreen();
+
+    //处理下此时的url
+    //逻辑：如果url不为空，且不是默认登陆地址，所设置为锁屏，则直接开启锁屏
+    if(lockscreen&&!url.isEmpty()&&url!="http://www.safeexamclient.com/login"&&!isparsing)
+    {
+        Utils::startLock();
+        islocking=true;
+    }
 }
 
 MainWindow::~MainWindow()
@@ -41,6 +49,11 @@ MainWindow::~MainWindow()
 //界面初始化
 void MainWindow::InitComponent()
 {
+
+    QPalette bg(this->palette());
+    bg.setColor(QPalette::Background,Qt::white);
+    this->setAutoFillBackground(true);
+    this->setPalette(bg);
     //分为上中下三部分
     QVBoxLayout* mainLayout=new QVBoxLayout(this);
 
@@ -122,9 +135,6 @@ void MainWindow::InitComponent()
     statusBar->setMaximumHeight(40);
     statusBar->setStyleSheet(".QWidget{background:white;border-top:1px solid lightgray}");
     statusBar->setVisible(showbottom);
-//    QSizePolicy sp_retain = statusBar->sizePolicy();
-//    sp_retain.setRetainSizeWhenHidden(false);
-//    statusBar->setSizePolicy(sp_retain);
 
     QHBoxLayout* bottomLayout=new QHBoxLayout(statusBar);
     QPalette pa;
@@ -136,7 +146,7 @@ void MainWindow::InitComponent()
     tipsLabel->setFont(QFont("Microsoft YaHei",12));
     tipsLabel->setScaledContents(true);
     tipsLabel->setPalette(pa);
-    tipsLabel->setVisible(false);
+    tipsLabel->setVisible(true);
 
     //3.2 buttons
 
@@ -180,12 +190,10 @@ void MainWindow::InitComponent()
 
     //add to mainLayout
     mainLayout->addWidget(topWidget);
-    mainLayout->addWidget(mainView);
+    mainLayout->addWidget(mainView,1);
     mainLayout->addWidget(statusBar);
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
-
-    mainLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
 
 
     //事件绑定
@@ -265,7 +273,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
         ExitWindow* exitWindow=new ExitWindow(exitpwd,this);
         int rst=exitWindow->exec();
         if(rst==1)
+        {
+            if(islocking)
+                Utils::closeLock();
             event->accept();
+        }
         else
         {
             QMessageBox::information(this,"Error",QStringLiteral("退出密码错误，请重试！"));

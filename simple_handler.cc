@@ -43,7 +43,8 @@ std::string GetDataURI(const std::string& data, const std::string& mime_type) {
 
 SimpleHandler::SimpleHandler(Delegate* handler):
     is_closing_(false),
-    delegate_(handler)
+    delegate_(handler),
+    is_load_error(false)
 {
     DCHECK(!g_instance);
     g_instance=this;
@@ -173,12 +174,37 @@ void SimpleHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
 
   // Display a load error message using a data: URI.
   std::stringstream ss;
-  ss << "<html><body bgcolor=\"white\">"
-        "<h2>Failed to load URL "
-     << std::string(failedUrl) << " with error " << std::string(errorText)
-     << " (" << errorCode << ").</h2></body></html>";
+    ss << "<html lang='zh'>"
+          "<head>"
+          "<meta charset='utf-8'>"
+          "<style>"
+          "html body{margin:0;padding:0;text-align:center;width:100%;height:100%}"
+          ".div1{margin:0 auto;height:400px;position:relative;top:40%}"
+          ".refresh{width:100px;height:30px;border:1px solid rgba(0,0,0,0.8);"
+          "border-radius:15px;margin:auto;display:block;background-color:#18A2F2;}"
+          ".refresh:hover{background-color:#38F2F2;border-:1px solid rgba(255,255,255,0);}"
+          ".refresh a{width:100%;height:100%;color:rgba(255,255,255,0.8);display:block;"
+          "text-decoration:none;background-color:transparent;font-size:15px;line-height:30px;}"
+          "</style>"
+          "</head>"
+          "<body bgcolor=\"white\">"
+          "<div class=\"div1\">"
+          "<h4>"
+          <<QStringLiteral("提示：考试作答页面加载失败").toStdString()
+        <<"</h4>"
+          "<div class=\"refresh\">"
+          "<a href="<<failedUrl
+        <<">"
+        <<QStringLiteral("点击刷新").toStdString()
+        <<"</a>"
+          "</div>"
+          "</div>"
+          "</body>"
+          "</html>";
+    frame->LoadURL(GetDataURI(ss.str(), "text/html"));
+    is_load_error=true;
+    failUrl=failedUrl;
 
-  frame->LoadURL(GetDataURI(ss.str(), "text/html"));
 }
 
 
@@ -189,8 +215,15 @@ void SimpleHandler::OnLoadStart(CefRefPtr<CefBrowser> browser,
     QString url_str=QString::fromStdString(frame->GetURL().ToString());
     if(url_str.contains("http://www.safeexamclient.com/login/exam/"))
     {
+        //此时的url变量已经通过参数解析获得，可以直接加载
         frame->LoadURL(url.toStdString());
         //重现加载配置
+        delegate_->UpdateForm();
+    }
+
+    if(url_str.contains(exam_finish_key)&&islocking)
+    {
+        showtop=true;
         delegate_->UpdateForm();
     }
 }

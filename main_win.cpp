@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
             envcheck=testSettings.value("CONFIG/ENVCHECK",QVariant("ON")).toString()=="ON";
             url=testSettings.value("CONFIG/URL",QVariant("http://www.safeexamclient.com/login")).toString();
             examname=testSettings.value("CONFIG/NAME",QVariant(QStringLiteral("在线考试平台"))).toString();
-            exitpwd=testSettings.value("CONFIG/PWD",QVariant("")).toString();
-            showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("ON")).toString()=="ON";
+            exitpwd=testSettings.value("CONFIG/EXITPWD",QVariant("")).toString();
+            showtime=testSettings.value("CONFIG/SHOWTIME",QVariant("OFF")).toString()=="ON";
             showlocalip=testSettings.value("CONFIG/SHOWLOCALIP",QVariant("ON")).toString()=="ON";
             showtop=testSettings.value("CONFIG/SHOWTOP",QVariant("ON")).toString()=="ON";
             showbottom=testSettings.value("CONFIG/SHOWBOTTOM",QVariant("ON")).toString()=="ON";
@@ -99,14 +99,24 @@ int main(int argc, char *argv[])
                     int code=val["code"].toInt();
                     if(code==1)
                     {
+                        isparsing=true;
                         auto obj=val["data"].toObject();
                         url=obj["exam_url"].toString();
                         lockscreen=obj["exam_lock"].toString()=="1";
                         examname=obj["exam_name"].toString();
+                        exitpwd=obj["exam_lock_password"].toString();
                         showtop=obj["exam_ui_top"].toString()=="1";
                         showbottom=obj["exam_ui_bottom"].toString()=="1";
                         lock_start_key=obj["exam_lock_on_key"].toString();
                         lock_end_key=obj["exam_lock_off_key"].toString();
+                        if(obj.contains("exam_finish_key"))
+                        {
+                            exam_finish_key=obj["exam_lock_off_key"].toString();
+                        }
+                        else
+                        {
+                            exam_finish_key=lock_end_key;
+                        }
                         qDebug()<<url;
                     }
                     else

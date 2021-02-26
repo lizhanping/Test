@@ -18,7 +18,7 @@ SOURCES += \
     customlabel.cpp \
     exitwindow.cpp \
     hook.cpp \
-    main.cpp \
+    main_win.cpp \
     mainwindow.cpp \
     simple_app.cc \
     simple_handler.cc \

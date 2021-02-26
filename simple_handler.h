@@ -56,10 +56,19 @@ public:
             qDebug()<<"filter url:"<<url;
             lockscreen=data["exam_lock"].toString()=="1";
             examname=data["exam_name"].toString();
+            exitpwd=data["exam_lock_password"].toString();
             showtop=data["exam_ui_top"].toString()=="1";
             showbottom=data["exam_ui_bottom"].toString()=="1";
             lock_start_key=data["exam_lock_on_key"].toString();
             lock_end_key=data["exam_lock_off_key"].toString();
+            if(data.contains("exam_finish_key"))
+            {
+                exam_finish_key=obj["exam_lock_off_key"].toString();
+            }
+            else
+            {
+                exam_finish_key=lock_end_key;
+            }
         }
         return FilterStatus::RESPONSE_FILTER_DONE;
     }
@@ -197,6 +206,8 @@ class SimpleHandler : public CefClient,
   BrowserList browser_list_;
   bool is_closing_;
   Delegate* delegate_;
+  bool is_load_error;
+  CefString failUrl;
 
  public:
   CefRefPtr<CefBrowser> getCurrentBrowser()

@@ -22,7 +22,10 @@ extern QString url;//初始加载url
 
 extern QString lock_start_key; //锁屏启动关键字
 extern QString lock_end_key; //锁屏结束关键字
+extern QString exam_finish_key;//考试结束关键字
 
 extern bool islocking;//锁定状态
+
+extern bool isparsing;//是否解析
 
 #endif // GLOBAL_H
