@@ -41,9 +41,8 @@ std::string GetDataURI(const std::string& data, const std::string& mime_type) {
 
 
 
-SimpleHandler::SimpleHandler(Delegate* handler):
+SimpleHandler::SimpleHandler():
     is_closing_(false),
-    delegate_(handler),
     is_load_error(false)
 {
     DCHECK(!g_instance);
@@ -70,18 +69,8 @@ void SimpleHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   // Add to the list of existing browsers.
   browser_list_.push_back(browser);
   qDebug()<<"create success";
-#ifdef Q_OS_WIN
-  HWND wnd=browser->GetHost()->GetWindowHandle();
-  auto hwnd=::GetAncestor(wnd,GA_PARENT);
-  auto window=QWidget::find((WId)hwnd);
-  if(window)
-  {
-      QRect qrect=window->rect();
-      if(wnd)
-           MoveWindow(wnd,qrect.x(),qrect.y(),qrect.width(),qrect.height(),true);
-  }
-#endif
-
+  emit afterCreated();
+  return ;
 }
 
 void SimpleHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
@@ -89,55 +78,8 @@ void SimpleHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
                                     const CefString &url)
 {
     QString url_str=QString::fromStdString(url.ToString());
-    if(lockscreen)
-    {
-        if(!lock_start_key.isNull()&&!lock_start_key.isEmpty()&&url_str.contains(lock_start_key))
-        {
-            if(!islocking)
-            {
-                Utils::startLock();
-                islocking=true;
-            }
-        }
-        else if(!lock_end_key.isNull()&&!lock_end_key.isEmpty()&&url_str.contains(lock_end_key))
-        {
-           if(islocking)
-           {
-               Utils::closeLock();
-               islocking=false;
-           }
-        }
-        else
-        {
-            if(url_str.contains(exam_finish_key)&&islocking)
-            {
-                showtop=true;
-                delegate_->UpdateForm();
-            }
-        }
-    }
-    else
-    {
-        if(url_str.contains(exam_finish_key))
-        {
-            showtop=true;
-            delegate_->UpdateForm();
-        }
-    }
-}
-
-void SimpleHandler::NotifyUrlChanged(const QString &url)
-{
-    if(!CefCurrentlyOn(TID_UI))
-    {
-        qDebug()<<"not on UI";
-        qDebug()<<"id4:"<<QThread::currentThreadId();
-        CefPostTask(TID_UI,CefCreateClosureTask(base::Bind(&SimpleHandler::NotifyUrlChanged,this,url)));
-        return;
-    }
-    qDebug()<<"id3:"<<QThread::currentThreadId();
-    if(delegate_)
-        delegate_->UrlChanged(url);
+    emit urlChanged(url_str);
+    return;
 }
 
 
@@ -219,7 +161,6 @@ void SimpleHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
     frame->LoadURL(GetDataURI(ss.str(), "text/html"));
     is_load_error=true;
     failUrl=failedUrl;
-
 }
 
 
@@ -228,13 +169,8 @@ void SimpleHandler::OnLoadStart(CefRefPtr<CefBrowser> browser,
                                 TransitionType transition_type)
 {
     QString url_str=QString::fromStdString(frame->GetURL().ToString());
-    if(url_str.contains("http://www.safeexamclient.com/login/exam/"))
-    {
-        //此时的url变量已经通过参数解析获得，可以直接加载
-        frame->LoadURL(url.toStdString());
-        //重现加载配置
-        delegate_->UpdateForm();
-    }
+    emit loadStart(url_str);
+    return ;
 }
 
 

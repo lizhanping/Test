@@ -14,7 +14,6 @@ win32: LIBS    +=  -luser32 -lgdi32
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    callbackhandler.cpp \
     customlabel.cpp \
     exitwindow.cpp \
     hook.cpp \
@@ -27,7 +26,6 @@ SOURCES += \
     writelog.cpp \
 
 HEADERS += \
-    callbackhandler.h \
     customlabel.h \
     exitwindow.h \
     hook.h \

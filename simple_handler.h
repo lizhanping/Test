@@ -79,23 +79,19 @@ private:
 };
 
 
-class SimpleHandler : public CefClient,
+class SimpleHandler : public QObject,
+                      public CefClient,
                       public CefContextMenuHandler,
                       public CefDisplayHandler,
                       public CefLifeSpanHandler,
                       public CefDragHandler,
                       public CefLoadHandler,
                       public CefRequestHandler,
-                      public CefResourceRequestHandler{
- public:
-    class Delegate{
-    public:
-        virtual void UrlChanged(const QString& url)=0;
-        virtual void UpdateForm()=0;
-    };
-
-
-   SimpleHandler(Delegate* delegate=nullptr);
+                      public CefResourceRequestHandler
+{
+    Q_OBJECT
+public:
+   SimpleHandler();
   ~SimpleHandler() override;
 
   // Provide access to the single global instance of this object.
@@ -205,9 +201,14 @@ class SimpleHandler : public CefClient,
   typedef std::list<CefRefPtr<CefBrowser>> BrowserList;
   BrowserList browser_list_;
   bool is_closing_;
-  Delegate* delegate_;
   bool is_load_error;
   CefString failUrl;
+
+public:
+signals:
+  void urlChanged(const QString& url);
+  void afterCreated();
+  void loadStart(const QString& url);
 
  public:
   CefRefPtr<CefBrowser> getCurrentBrowser()

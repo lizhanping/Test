@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "exitwindow.h"
 #include "global.h"
-#include "callbackhandler.h"
 
 #include<QVBoxLayout>
 #include<QHBoxLayout>
@@ -25,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
       handler(nullptr),
       timer(new QTimer)
 {
-    qDebug()<<"id1:"<<QThread::currentThreadId();
+    qDebug()<<"window id:"<<QThread::currentThreadId();
     this->InitComponent();
     this->InitTimer();
     this->showFullScreen();
@@ -117,7 +116,7 @@ void MainWindow::InitComponent()
     RECT winRect={0,0,0,0};
     window_info.SetAsChild(wnd,winRect);
     CefBrowserSettings settings;
-    handler = CefRefPtr<SimpleHandler>(new SimpleHandler(dynamic_cast<SimpleHandler::Delegate*>(new CallBackHandler(this))));
+    handler = CefRefPtr<SimpleHandler>(new SimpleHandler());
     bool flag=CefBrowserHost::CreateBrowser(window_info, handler, url.toStdString(), settings, nullptr,nullptr);
     if(flag)
     {
@@ -241,8 +240,94 @@ void MainWindow::InitComponent()
         });
         timer->start();
     }
+
+    //浏览器事件绑定
+    connect(handler,SIGNAL(urlChanged(const QString&)),this,SLOT(urlChanged(const QString&)));
+    connect(handler,SIGNAL(afterCreated()),this,SLOT(afterCreated()));
+    connect(handler,SIGNAL(loadStart(const QString&)),this,SLOT(loadStart(const QString&)));
 }
 
+
+void MainWindow::urlChanged(const QString& url)
+{
+    qDebug()<<"main url changed:"<<url;
+    qDebug()<<QThread::currentThreadId();
+    if(lockscreen)
+    {
+        if(!lock_start_key.isNull()&&!lock_start_key.isEmpty()&&url.contains(lock_start_key))
+        {
+            if(!islocking)
+            {
+                Utils::startLock();
+                islocking=true;
+            }
+        }
+        else if(!lock_end_key.isNull()&&!lock_end_key.isEmpty()&&url.contains(lock_end_key))
+        {
+           if(islocking)
+           {
+               Utils::closeLock();
+               islocking=false;
+           }
+        }
+        if(url.contains(exam_finish_key))
+        {
+            showtop=true;
+            this->updateForm();
+        }
+    }
+    else
+    {
+        if(url.contains(exam_finish_key))
+        {
+            showtop=true;
+            this->updateForm();
+        }
+    }
+}
+
+void MainWindow::updateForm()
+{
+    //依据配置元素，更新界面
+    this->topWidget->setVisible(showtop);
+    this->statusBar->setVisible(showbottom);
+    this->resize(this->size().width()-1,this->size().height()-1);
+    this->resize(this->size().width()+1,this->size().height()+1);
+}
+
+void MainWindow::afterCreated()
+{
+#ifdef Q_OS_WIN
+    if(handler)
+    {
+        HWND wnd=handler->getCurrentBrowser()->GetHost()->GetWindowHandle();
+
+        if(this->mainView)
+        {
+            QRect qrect=this->mainView->rect();
+            if(wnd)
+                 MoveWindow(wnd,qrect.x(),qrect.y(),qrect.width(),qrect.height(),true);
+        }
+    }
+#endif
+}
+
+void MainWindow::loadStart(const QString& url_str)
+{
+    if(url_str.contains("http://www.safeexamclient.com/login/exam/"))
+    {
+        if(handler)
+        {
+            auto browser=handler->getCurrentBrowser();
+            if(browser)
+            {
+                //此时的全局url变量已经通过参数解析获得，可以直接加载
+                browser->GetMainFrame()->LoadURL(url.toStdString());
+                this->updateForm();
+            }
+        }
+    }
+}
 
 void MainWindow::InitTimer()
 {

@@ -24,6 +24,7 @@ public:
 private:
     void InitComponent();
     void InitTimer();
+    void updateForm();
 
 public:
     void closeEvent(QCloseEvent *event) override;
@@ -54,5 +55,10 @@ public:
 
     //定时器
     QTimer* timer;
+
+public slots:
+    void urlChanged(const QString& url);
+    void afterCreated();
+    void loadStart(const QString& url);
 };
 #endif // MAINWINDOW_H

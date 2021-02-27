@@ -21,6 +21,7 @@
 #include<QNetworkReply>
 #include<QJsonObject>
 #include<QJsonDocument>
+#include<QThread>
 
 /*
     version 1.1
@@ -49,11 +50,24 @@
 
 int main(int argc, char *argv[])
 {
+    //cef 相关初始化
+    CefEnableHighDPISupport();
+    HINSTANCE hInstance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
+    CefMainArgs mainArgs(hInstance);
+    CefRefPtr<SimpleApp> app(new SimpleApp); //CefApp实现，用于处理进程相关的回调。
+
+    int exit_code = CefExecuteProcess(mainArgs, app, nullptr);
+    if (exit_code >= 0) {
+        return exit_code;
+    }
+
+
+    //初始化app
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/Image/Exam.ico"));
-
+    qDebug()<<"entry id:"<<QThread::currentThreadId();
     //安装日志
-    qInstallMessageHandler(outputMessage);
+    //qInstallMessageHandler(outputMessage);
 
     QFile file(QApplication::applicationDirPath()+"/Exam.ini");
     //配置文件存在
@@ -162,19 +176,6 @@ int main(int argc, char *argv[])
         //配置文件不存在，则全部使用默认值
     }
 
-
-
-    //cef 相关初始化
-    CefEnableHighDPISupport();
-    HINSTANCE hInstance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
-    CefMainArgs mainArgs(hInstance);
-    CefRefPtr<SimpleApp> app(new SimpleApp); //CefApp实现，用于处理进程相关的回调。
-
-    int exit_code = CefExecuteProcess(mainArgs, app, nullptr);
-    qDebug()<<"exit_code:"<<exit_code;
-    if (exit_code >= 0) {
-        return exit_code;
-    }
 
     CefSettings settings;
     settings.multi_threaded_message_loop=true;
